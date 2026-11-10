@@ -413,7 +413,7 @@ main {
   letter-spacing: 0.05em;
   color: var(--text-dim);
 }
-.kpi-v {
+.kpi-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(1.2rem, 2.5vw, 1.85rem);
   font-size: 1.85rem;
   font-weight: 800;
   letter-spacing: -0.03em;
