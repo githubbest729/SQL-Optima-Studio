@@ -1,0 +1,15 @@
+{
+  "name": "sql-optima-edge-gateway",
+  "version": "1.0.0",
+  "description": "Industrial Edge Gateway & WebSocket Proxy for SCADA Nodes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "node-opcua": "^2.115.0",
+    "mssql": "^10.0.2",
+    "dotenv": "^16.4.5"
+  }
+}

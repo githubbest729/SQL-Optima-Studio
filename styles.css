@@ -1,6 +1,6 @@
 /* =====================================================================
-   SQL-Optima Studio — Professional Industrial SCADA Design System
-   High-contrast, glare-reducing palette for 24/7 Control Rooms
+   SQL-Optima Studio — Industrial Control Room Design System (WCAG AA)
+   Tailored for High-DPI Desks, Rugged Tablets, and Control Displays
    ===================================================================== */
 :root {
   --bg: #070b11;
@@ -48,7 +48,7 @@
   --accent-2: #d97706;
 }
 
-/* Base Reset & Prevent Horizontal Page Overflow */
+/* Base Reset & Layout Foundation */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -83,7 +83,6 @@ input, select, textarea { font: inherit; }
 }
 .skip:focus { top: 16px; outline: 2px solid #fff; }
 
-/* Main Grid Shell */
 .app {
   display: flex;
   min-height: 100dvh;
@@ -91,8 +90,9 @@ input, select, textarea { font: inherit; }
   max-width: 100%;
 }
 
+/* Sidebar Styling */
 .sidebar {
-  width: 250px;
+  width: 260px;
   background: var(--surface-solid);
   border-right: 1px solid var(--border);
   display: flex;
@@ -102,7 +102,7 @@ input, select, textarea { font: inherit; }
   flex-shrink: 0;
 }
 
-.collapsed .sidebar { width: 70px; }
+.collapsed .sidebar { width: 72px; }
 
 .brand {
   padding: 18px 16px;
@@ -260,7 +260,7 @@ input, select, textarea { font: inherit; }
   white-space: nowrap;
 }
 .crumbs b { color: var(--text); }
-.topbar-search { flex: 1; max-width: 480px; }
+.topbar-search { flex: 1; max-width: 440px; }
 .search-btn {
   width: 100%;
   display: flex;
@@ -305,7 +305,7 @@ input, select, textarea { font: inherit; }
 main {
   flex: 1;
   padding: 20px;
-  max-width: 1540px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
 }
@@ -360,6 +360,7 @@ main {
   grid-template-columns: repeat(12, 1fr);
   gap: 16px;
 }
+.c-2 { grid-column: span 2; }
 .c-3 { grid-column: span 3; }
 .c-4 { grid-column: span 4; }
 .c-5 { grid-column: span 5; }
@@ -367,6 +368,7 @@ main {
 .c-7 { grid-column: span 7; }
 .c-8 { grid-column: span 8; }
 .c-9 { grid-column: span 9; }
+.c-10 { grid-column: span 10; }
 .c-12 { grid-column: span 12; }
 
 .card {
@@ -420,7 +422,7 @@ main {
 }
 .kpi-s { font-size: 0.74rem; color: var(--text-muted); }
 
-/* Buttons & Inputs */
+/* Buttons & Form Elements */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -510,7 +512,7 @@ main {
   font-size: 0.88rem;
 }
 .ed-gutter {
-  width: 44px;
+  width: 48px;
   background: rgba(255, 255, 255, 0.02);
   color: #475569;
   padding: 12px 8px;
@@ -621,7 +623,7 @@ main {
   color: var(--text-dim);
 }
 .empty strong { color: #fff; font-size: 1rem; }
-.empty span { font-size: 0.85rem; max-width: 40ch; }
+.empty span { font-size: 0.85rem; max-width: 44ch; }
 
 /* Table Styles */
 .table-wrap {
@@ -649,29 +651,54 @@ main {
 }
 .table tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
-/* Execution Plan Tree View */
-.plan { list-style: none; padding-left: 0; }
-.plan ul { list-style: none; padding-left: 20px; border-left: 1px dashed var(--border); margin-left: 10px; }
-.plan-node {
-  padding: 8px 12px;
-  margin: 4px 0;
+/* Canvas Visualization Components */
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  background: #080c14;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
 }
-.plan-node.hot {
-  border-color: rgba(248, 113, 113, 0.4);
-  background: rgba(248, 113, 113, 0.06);
+.chart-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
 }
-.plan-h {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.chart-tooltip {
+  position: absolute;
+  background: rgba(14, 21, 32, 0.95);
+  border: 1px solid var(--border-strong);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: #fff;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 10;
+  display: none;
 }
-.plan-cost { font-weight: 800; color: var(--warn); }
 
-/* Console / Log Terminal */
+/* File Drop Zone */
+.dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.015);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.05);
+}
+
+/* Console Log View */
 .console {
   background: #05080e;
   border: 1px solid var(--border);
@@ -720,7 +747,7 @@ main {
   margin-top: auto;
 }
 .footer-in {
-  max-width: 1540px;
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -742,7 +769,7 @@ main {
   border: 1px solid var(--border);
 }
 
-/* Modals & Dialogs */
+/* Modals */
 .scrim {
   position: fixed;
   inset: 0;
@@ -757,7 +784,7 @@ main {
   background: var(--surface-solid);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  width: min(600px, 100%);
+  width: min(650px, 100%);
   max-height: 90dvh;
   display: flex;
   flex-direction: column;
@@ -779,26 +806,13 @@ main {
   gap: 10px;
 }
 
-/* Responsive Breakpoints */
+/* Responsive Overrides */
 @media (max-width: 1024px) {
-  .c-3, .c-4, .c-5, .c-6, .c-7, .c-8, .c-9 { grid-column: span 12; }
+  .c-2, .c-3, .c-4, .c-5, .c-6, .c-7, .c-8, .c-9, .c-10 { grid-column: span 12; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
-  .sidebar {
-    position: fixed;
-    left: -260px;
-    top: 0; bottom: 0;
-  }
-  .nav-open .sidebar {
-    left: 0;
-    box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
-  }
-  .nav-open .scrim-nav {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(2px);
-    z-index: 35;
-  }
+  .sidebar { position: fixed; left: -270px; top: 0; bottom: 0; }
+  .nav-open .sidebar { left: 0; box-shadow: 0 0 32px rgba(0, 0, 0, 0.8); }
+  .nav-open .scrim-nav { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 35; }
   .menu-btn { display: inline-flex; }
 }
 

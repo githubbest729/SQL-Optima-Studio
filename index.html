@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>SQL-Optima Studio — SCADA Query Profiler &amp; Historian Tuning Hub</title>
-  <meta name="description" content="Professional industrial automation engineering workbench for SCADA historians, SQL optimization, tag telemetry, alarm analysis, and control scripts.">
+  <title>SQL-Optima Studio — Industrial SCADA &amp; Historian Tuning Hub</title>
+  <meta name="description" content="Industrial SCADA engineering productivity workbench for AVEVA Historian, TimescaleDB, MS SQL Server, EEMUA 191 alarm analysis, and PLC code verification.">
   <meta name="theme-color" content="#070b11">
   <meta name="color-scheme" content="dark">
   <meta name="application-name" content="SQL-Optima Studio">
@@ -15,7 +15,7 @@
 
   <!-- Open Graph -->
   <meta property="og:title" content="SQL-Optima Studio — SCADA Query Profiler &amp; Historian Tuning Hub">
-  <meta property="og:description" content="Industrial engineering tool for AVEVA/Wonderware, TimescaleDB, and MS SQL Server query optimization and SCADA diagnostics.">
+  <meta property="og:description" content="Industrial engineering platform for SCADA database optimization and PLC automation.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="icon.svg">
 
@@ -24,7 +24,10 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="stylesheet" href="styles.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" defer></script>
+  <!-- Production Client-Side Libraries: SheetJS (XLSX) & jsPDF with autoTable Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to main content</a>
@@ -46,10 +49,10 @@
 
       <div class="sidebar-foot">
         <div class="mode-badge" id="appModeBadge" title="Operational Data Mode">
-          <span class="dot warn"></span>
+          <span class="dot warn" id="gatewayStatusDot"></span>
           <div class="mode-info">
-            <span class="mode-lbl">MODE</span>
-            <strong class="mode-val">DEMO / SIMULATED</strong>
+            <span class="mode-lbl">DATA LINK</span>
+            <strong class="mode-val" id="gatewayStatusTxt">OFFLINE / SIMULATED</strong>
           </div>
         </div>
         <div class="sector-chip" id="sectorChip"></div>
@@ -74,15 +77,15 @@
         <div class="topbar-search">
           <button class="search-btn" id="searchBtn" type="button" aria-label="Open Command Palette">
             <span id="searchIco"></span>
-            <span class="search-placeholder">Command Palette…</span>
+            <span class="search-placeholder">Quick Command Palette…</span>
             <kbd id="kbdHint">Ctrl K</kbd>
           </button>
         </div>
 
         <div class="topbar-actions">
-          <div class="live-pill" id="livePill" title="No live SCADA link established">
-            <span class="dot pulse-warn"></span>
-            <span>SIMULATED DB</span>
+          <div class="live-pill" id="livePill" title="Operational Mode Indicator">
+            <span class="dot pulse-warn" id="topbarPillDot"></span>
+            <span id="topbarPillTxt">SIMULATED SCADA LINK</span>
           </div>
           <button class="btn btn-ghost btn-icon" id="themeBtn" type="button" aria-label="Cycle UI Theme" title="Cycle UI Theme"></button>
           <button class="btn btn-primary hide" id="installBtn" type="button" aria-label="Install Desktop/Mobile PWA"></button>
@@ -113,8 +116,14 @@
     </div>
   </noscript>
 
+  <!-- Modular Scripts -->
   <script src="icons.js"></script>
   <script src="components.js"></script>
+  <script src="js/trend-engine.js"></script>
+  <script src="js/alarm-engine.js"></script>
+  <script src="js/st-parser.js"></script>
+  <script src="js/python-linter.js"></script>
+  <script src="js/report-generator.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
