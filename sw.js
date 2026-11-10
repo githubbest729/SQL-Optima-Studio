@@ -2,7 +2,7 @@
    SQL-Optima Studio — Progressive Web App Service Worker
    Cache-First Engine with Dynamic Invalidation
    ===================================================================== */
-const CACHE_NAME = 'sql-optima-v2.4.0';
+const CACHE_NAME = 'sql-optima-v2.5.0';
 const STATIC_ASSETS = [
   './',
   'index.html',

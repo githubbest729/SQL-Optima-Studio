@@ -302,7 +302,6 @@
     var qs = (await DB.all('queries')) || [];
     var scripts = (await DB.all('scripts')) || [];
 
-    // Ensure baseline seed stats for a realistic engineering dashboard
     var displayQueries = qs.slice();
     if (displayQueries.length === 0) {
       displayQueries = [
@@ -388,7 +387,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 2: Upgraded Query Profiler (Fixes text overlap & horizontal lock)
+     VIEW 2: Upgraded Query Profiler
      --------------------------------------------------------------------- */
   async function viewProfiler(el) {
     var draft = await DB.kvGet('draft:profiler', null);
@@ -561,7 +560,6 @@
 
     function formatQuery() {
       var sql = editor.getValue();
-      // Basic deterministic keyword alignment
       var formatted = sql
         .replace(/\bSELECT\b/gi, 'SELECT')
         .replace(/\bFROM\b/gi, '\nFROM')
@@ -630,7 +628,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 3: Historian Explorer (New Industrial Module)
+     VIEW 3: Historian Explorer
      --------------------------------------------------------------------- */
   function viewHistorian(el) {
     el.innerHTML =
@@ -700,7 +698,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 4: Trend Analyzer (New Industrial Module)
+     VIEW 4: Trend Analyzer
      --------------------------------------------------------------------- */
   function viewTrends(el) {
     el.innerHTML =
@@ -764,7 +762,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 5: Alarm & Event Analytics (New Industrial Module)
+     VIEW 5: Alarm & Event Analytics
      --------------------------------------------------------------------- */
   function viewAlarms(el) {
     el.innerHTML =
@@ -811,7 +809,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 6: Script Workbench (Multi-Language)
+     VIEW 6: Script Workbench
      --------------------------------------------------------------------- */
   function viewWorkbench(el) {
     var cur = SCRIPT_SEEDS[0];
@@ -891,7 +889,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 7: System Settings & Diagnostics
+     VIEW 7: System Settings & Diagnostics (With Token Auth & Gateway Link)
      --------------------------------------------------------------------- */
   function viewSettings(el) {
     el.innerHTML =
@@ -922,6 +920,8 @@
             '<div class="stack" style="gap:10px;">' +
               '<label class="filter-lbl" for="txtGatewayWs" style="font-size:0.75rem; color:var(--text-dim); font-weight:700;">Secure WebSocket Proxy Endpoint:</label>' +
               '<input class="input" id="txtGatewayWs" value="wss://special-lamp-pjj9jwp4j4vpc7r55-8088.app.github.dev/scada-feed" style="width:100%; font-family:var(--font-mono); font-size:0.8rem;">' +
+              '<label class="filter-lbl" for="txtGatewayToken" style="font-size:0.75rem; color:var(--text-dim); font-weight:700;">Gateway Access Token (Bearer):</label>' +
+              '<input class="input" id="txtGatewayToken" type="password" value="agac-scada-token-2026" style="width:100%; font-family:var(--font-mono); font-size:0.8rem;">' +
               '<div class="row" style="gap:8px;">' +
                 '<button class="btn btn-primary" id="btnConnectGateway">Connect to Gateway</button>' +
                 '<button class="btn btn-ghost" id="btnPingGateway">Test Health (HTTP)</button>' +
@@ -950,36 +950,56 @@
 
     var btnConn = el.querySelector('#btnConnectGateway');
     var txtWs = el.querySelector('#txtGatewayWs');
+    var txtToken = el.querySelector('#txtGatewayToken');
     var fb = el.querySelector('#gatewayFeedback');
 
-    if (btnConn && txtWs) {
+    if (btnConn && txtWs && txtToken) {
       btnConn.addEventListener('click', function () {
-        var ep = txtWs.value.trim();
-        fb.textContent = 'Attempting connection to ' + ep + '...';
+        var rawEp = txtWs.value.trim();
+        var token = txtToken.value.trim();
+        var ep = rawEp + (rawEp.indexOf('?') === -1 ? '?token=' : '&token=') + encodeURIComponent(token);
+
+        fb.textContent = 'Authenticating with Edge Gateway...';
         fb.style.color = 'var(--warn)';
 
         try {
           var ws = new WebSocket(ep);
-          ws.onopen = function () {
-            fb.textContent = 'Connected successfully to Edge Gateway!';
-            fb.style.color = 'var(--ok)';
-            var dot = document.querySelector('#gatewayStatusDot') || document.querySelector('.dot.warn');
-            if (dot) dot.className = 'dot';
-            var txt = document.querySelector('#gatewayStatusTxt');
-            if (txt) txt.textContent = 'GATEWAY ONLINE';
-            var pill = document.querySelector('#topbarPillTxt');
-            if (pill) pill.textContent = 'LIVE OT LINK';
-            var pillDot = document.querySelector('#topbarPillDot');
-            if (pillDot) pillDot.className = 'dot';
-            if (window.UI && window.UI.toast) window.UI.toast('Edge Gateway Connected', 'ok');
+
+          ws.onmessage = function (evt) {
+            try {
+              var msg = JSON.parse(evt.data);
+              if (msg.type === 'AUTH_SUCCESS') {
+                fb.textContent = 'Connected & Authorized (' + (msg.role || 'ENGINEER') + ' Session Active)';
+                fb.style.color = 'var(--ok)';
+                var dot = document.querySelector('#gatewayStatusDot') || document.querySelector('.dot.warn');
+                if (dot) dot.className = 'dot';
+                var txt = document.querySelector('#gatewayStatusTxt');
+                if (txt) txt.textContent = 'GATEWAY ONLINE';
+                var pill = document.querySelector('#topbarPillTxt');
+                if (pill) pill.textContent = 'LIVE OT LINK';
+                var pillDot = document.querySelector('#topbarPillDot');
+                if (pillDot) pillDot.className = 'dot';
+                if (window.UI && window.UI.toast) window.UI.toast('Edge Gateway Authorized', 'ok');
+              } else if (msg.type === 'AUTH_ERROR') {
+                fb.textContent = 'Authentication Failed: ' + msg.message;
+                fb.style.color = 'var(--bad)';
+              }
+            } catch (e) {}
           };
+
           ws.onerror = function () {
-            fb.textContent = 'WebSocket connection failed. Verify port 8088 is forwarded and set to Public.';
+            fb.textContent = 'WebSocket handshake failed. Verify port 8088 is public and token is valid.';
             fb.style.color = 'var(--bad)';
           };
-          ws.onclose = function () {
-            fb.textContent = 'Disconnected from Edge Gateway.';
-            fb.style.color = 'var(--text-dim)';
+
+          ws.onclose = function (e) {
+            if (e.code === 4401) {
+              fb.textContent = 'Rejected: 4401 Unauthorized (Invalid Token)';
+              fb.style.color = 'var(--bad)';
+            } else {
+              fb.textContent = 'Disconnected from Edge Gateway.';
+              fb.style.color = 'var(--text-dim)';
+            }
           };
         } catch (e) {
           fb.textContent = 'Connection error: ' + e.message;
