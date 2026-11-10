@@ -13,7 +13,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SQL-Optima">
 
-  <!-- Open Graph -->
   <meta property="og:title" content="SQL-Optima Studio — SCADA Query Profiler &amp; Historian Tuning Hub">
   <meta property="og:description" content="Industrial engineering platform for SCADA database optimization and PLC automation.">
   <meta property="og:type" content="website">
@@ -24,7 +23,6 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="stylesheet" href="styles.css">
 
-  <!-- Production Client-Side Libraries: SheetJS (XLSX) & jsPDF with autoTable Plugin -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -33,7 +31,6 @@
   <a class="skip" href="#main">Skip to main content</a>
 
   <div class="app" id="app">
-    <!-- Collapsible Industrial Sidebar -->
     <aside class="sidebar" id="sidebar" aria-label="Main Navigation">
       <div class="brand">
         <a href="#/dashboard" class="brand-link" aria-label="SQL-Optima Studio Home">
@@ -65,7 +62,6 @@
 
     <div class="scrim-nav" id="scrimNav"></div>
 
-    <!-- Main Application Shell -->
     <div class="shell">
       <header class="topbar">
         <button class="btn btn-ghost btn-icon menu-btn" id="menuBtn" type="button" aria-label="Open Navigation Menu" aria-controls="sidebar">
@@ -82,7 +78,6 @@
           </button>
         </div>
 
-        <!-- Help & Guide Button for Non-Technical Users -->
         <button class="btn btn-ghost" id="topbarHelpBtn" onclick="window.openGuideModal ? window.openGuideModal(location.hash.replace('#/', '')) : null" style="gap:6px; font-size:0.85rem; padding: 6px 12px; margin-left: 8px; border: 1px solid var(--border, #2a3b53); border-radius: 6px;">
           📖 Help &amp; Guide
         </button>
@@ -121,7 +116,6 @@
     </div>
   </noscript>
 
-  <!-- Modular Scripts -->
   <script src="icons.js"></script>
   <script src="components.js"></script>
   <script src="js/trend-engine.js"></script>
