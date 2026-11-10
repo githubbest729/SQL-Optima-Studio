@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const WebSocket = require('ws');
+const url = require('url');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -17,7 +19,8 @@ const ROLES = {
 const TOKEN_REGISTRY = {
   [process.env.GATEWAY_TOKEN_ADMIN || 'agac-admin-token-2026']: ROLES.ADMIN,
   [process.env.GATEWAY_TOKEN_ENGINEER || 'agac-engineer-token-2026']: ROLES.ENGINEER,
-  [process.env.GATEWAY_TOKEN_VIEWER || 'agac-viewer-token-2026']: ROLES.VIEWER
+  [process.env.GATEWAY_TOKEN_VIEWER || 'agac-viewer-token-2026']: ROLES.VIEWER,
+  [process.env.GATEWAY_API_KEY || 'agac-scada-token-2026']: ROLES.ENGINEER
 };
 
 const rateLimitMap = new Map();
@@ -36,11 +39,29 @@ function checkRateLimit(ip) {
   return clientData.count <= MAX_REQUESTS_PER_WINDOW;
 }
 
+function safeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function getRoleFromToken(token) {
+  if (!token) return null;
+  for (const [validToken, role] of Object.entries(TOKEN_REGISTRY)) {
+    if (safeCompare(token, validToken)) {
+      return role;
+    }
+  }
+  return null;
+}
+
 app.use(express.json({ limit: '500kb' }));
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://githubbest729.github.io,http://localhost:3000,http://127.0.0.1:3000').split(',');
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin || ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
@@ -63,7 +84,7 @@ function auditLog(action, clientIp, userRole, details, outcome = 'SUCCESS') {
 }
 
 function requireAuth(minRole = ROLES.VIEWER) {
-  return function(req, res, next) {
+  return function (req, res, next) {
     const ip = req.ip || req.socket.remoteAddress;
     if (!checkRateLimit(ip)) {
       auditLog('RATE_LIMIT_EXCEEDED', ip, null, 'Client hit sliding request ceiling', 'REJECTED');
@@ -77,7 +98,7 @@ function requireAuth(minRole = ROLES.VIEWER) {
     }
 
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-    const role = TOKEN_REGISTRY[token];
+    const role = getRoleFromToken(token);
 
     if (!role) {
       auditLog('AUTH_INVALID', ip, null, 'Provided token not in registry', 'REJECTED');
@@ -113,8 +134,8 @@ function validateReadOnlySql(sql) {
   }
 
   const forbiddenKeywords = [
-    'INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'TRUNCATE', 'CREATE', 
-    'EXEC', 'EXECUTE', 'MERGE', 'GRANT', 'REVOKE', 'SHUTDOWN', 'BACKUP', 
+    'INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'TRUNCATE', 'CREATE',
+    'EXEC', 'EXECUTE', 'MERGE', 'GRANT', 'REVOKE', 'SHUTDOWN', 'BACKUP',
     'RESTORE', 'DBCC', 'XP_CMDSHELL', 'SP_EXECUTESQL'
   ];
 
@@ -170,27 +191,38 @@ app.post('/api/sql/estimated-plan', requireAuth(ROLES.ENGINEER), async (req, res
   });
 });
 
-let server = http.createServer(app);
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/scada-feed' });
 
+// Unified, single WebSocket listener with query parameter authentication
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
-  auditLog('WS_CONNECT', ip, null, 'Client connected to SCADA WebSocket feed');
+ // WHATWG URL API (compliant, zero deprecation warnings):
+const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+const token = reqUrl.searchParams.get('token');
+
+  const role = getRoleFromToken(token);
+
+  if (!role) {
+    auditLog('WS_AUTH_FAIL', ip, null, 'Unauthorized or missing token', 'REJECTED');
+    ws.send(JSON.stringify({ type: 'AUTH_ERROR', message: 'Unauthorized: Invalid or missing gateway token.' }));
+    ws.close(4401, 'Unauthorized');
+    return;
+  }
+
+  auditLog('WS_AUTH_OK', ip, role, 'WebSocket session authorized', 'SUCCESS');
+  ws.send(JSON.stringify({
+    type: 'AUTH_SUCCESS',
+    role: role,
+    message: 'Authorized session established.',
+    serverTime: new Date().toISOString()
+  }));
+
   let pollTimer = null;
 
   ws.on('message', (msg) => {
     try {
       const packet = JSON.parse(msg);
-      if (packet.type === 'AUTH') {
-        const role = TOKEN_REGISTRY[packet.token];
-        if (role) {
-          ws.send(JSON.stringify({ type: 'AUTH_SUCCESS', role, message: 'Session Authorized' }));
-        } else {
-          ws.send(JSON.stringify({ type: 'AUTH_FAIL', error: 'Invalid Gateway Token' }));
-          ws.close();
-        }
-        return;
-      }
 
       if (packet.type === 'SUBSCRIBE_TAGS') {
         const requestedTags = packet.tags || ['CH01.SupplyTemperature'];
@@ -216,8 +248,9 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (code) => {
     if (pollTimer) clearInterval(pollTimer);
+    auditLog('WS_DISCONNECT', ip, role, `Session closed with code: ${code}`);
   });
 });
 
