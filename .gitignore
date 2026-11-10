@@ -1,0 +1,4 @@
+node_modules/
+edge-gateway/node_modules/
+edge-gateway/.env
+.DS_Store
