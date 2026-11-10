@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const WebSocket = require('ws');
-const url = require('url');
 const crypto = require('crypto');
+const sqlServer = require('mssql');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +21,26 @@ const TOKEN_REGISTRY = {
   [process.env.GATEWAY_TOKEN_ENGINEER || 'agac-engineer-token-2026']: ROLES.ENGINEER,
   [process.env.GATEWAY_TOKEN_VIEWER || 'agac-viewer-token-2026']: ROLES.VIEWER,
   [process.env.GATEWAY_API_KEY || 'agac-scada-token-2026']: ROLES.ENGINEER
+};
+
+// Database Connection Configuration (Least-Privilege Engine Account)
+const dbConfig = {
+  user: process.env.DB_USER || 'scada_readonly',
+  password: process.env.DB_PASSWORD || 'ReadOnlySCADA2026!',
+  server: process.env.DB_SERVER || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '1433', 10),
+  database: process.env.DB_NAME || 'Runtime',
+  options: {
+    encrypt: false,
+    trustServerCertificate: true
+  },
+  pool: {
+    max: 10,
+    min: 1,
+    idleTimeoutMillis: 30000
+  },
+  connectionTimeout: 5000,
+  requestTimeout: 10000
 };
 
 const rateLimitMap = new Map();
@@ -155,6 +175,7 @@ app.get('/api/health', (req, res) => {
     service: 'SQL-Optima-Edge-Gateway',
     version: '2.5.0',
     mode: 'STRICT_READ_ONLY_ENFORCED',
+    databaseTarget: 'scada-sql-dev (MS SQL 2022)',
     tlsEnabled: USE_TLS,
     timestamp: new Date().toISOString()
   });
@@ -168,38 +189,42 @@ app.post('/api/sql/estimated-plan', requireAuth(ROLES.ENGINEER), async (req, res
     return res.status(400).json({ error: validation.error });
   }
 
-  const showplanXml = `<?xml version="1.0" encoding="utf-16"?>
-<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2">
-  <BatchSequence><Batch><Statements>
-    <StmtSimple StatementText="${sql.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" StatementType="SELECT" StatementSubTreeCost="0.0425" StatementEstRows="1420">
-      <QueryPlan DegreeOfParallelism="1" MemoryGrant="1024" CachedPlanSize="32">
-        <RelOp NodeId="0" PhysicalOp="Clustered Index Seek" LogicalOp="Clustered Index Seek" EstimateRows="1420" EstimateIO="0.038" EstimateCPU="0.0042">
-          <IndexScan Ordered="1" ScanDirection="FORWARD">
-            <Object Database="[Runtime]" Schema="[dbo]" Table="[History]" Index="[PK_History_TimeTag]"/>
-          </IndexScan>
-        </RelOp>
-      </QueryPlan>
-    </StmtSimple>
-  </Statements></Batch></BatchSequence>
-</ShowPlanXML>`;
+  let pool;
+  try {
+    pool = await new sqlServer.ConnectionPool(dbConfig).connect();
+    const request = pool.request();
 
-  res.json({
-    status: 'SUCCESS',
-    source: 'FIXTURE_SIMULATOR',
-    database: database || 'Runtime',
-    showplanXml
-  });
+    // Request engine execution plan without committing data modifications
+    await request.batch('SET SHOWPLAN_XML ON;');
+    const result = await request.batch(sql);
+    await request.batch('SET SHOWPLAN_XML OFF;');
+
+    const showplanXml = result.recordset && result.recordset[0]
+      ? Object.values(result.recordset[0])[0]
+      : null;
+
+    auditLog('SQL_PLAN_SUCCESS', req.clientIp, req.userRole, 'Live execution plan extracted from engine');
+    res.json({
+      status: 'SUCCESS',
+      source: 'LIVE_SQL_ENGINE',
+      database: database || 'Runtime',
+      showplanXml
+    });
+  } catch (err) {
+    auditLog('SQL_ENGINE_ERROR', req.clientIp, req.userRole, err.message, 'FAILED');
+    res.status(500).json({ error: `Database Engine Rejection: ${err.message}` });
+  } finally {
+    if (pool) await pool.close();
+  }
 });
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/scada-feed' });
 
-// Unified, single WebSocket listener with query parameter authentication
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
- // WHATWG URL API (compliant, zero deprecation warnings):
-const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-const token = reqUrl.searchParams.get('token');
+  const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const token = reqUrl.searchParams.get('token');
 
   const role = getRoleFromToken(token);
 
