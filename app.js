@@ -6,7 +6,7 @@
   'use strict';
 
   var UI = window.UI, I = window.Icons, esc = UI.esc;
-  var VERSION = '2.4.0-industrial';
+  var VERSION = '2.5.0-industrial';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var L = function () { return Array.prototype.slice.call(arguments).join('\n'); };
@@ -898,7 +898,7 @@
       '<div class="page-h">' +
         '<div>' +
           '<h1>Settings &amp; Workstation Diagnostics</h1>' +
-          '<p>Manage local data caches, PWA installation status, and control room themes.</p>' +
+          '<p>Manage local data caches, industrial edge gateway links, and control room themes.</p>' +
         '</div>' +
       '</div>' +
 
@@ -907,10 +907,26 @@
           span: 'c-6',
           title: 'Display Palette',
           body:
-            '<div class="row" style="gap:10px;">' +
-              '<button class="btn" data-theme-set="control-room">Control Room Dark</button>' +
-              '<button class="btn" data-theme-set="slate">Engineer Slate</button>' +
-              '<button class="btn" data-theme-set="amber">High-Viz Amber</button>' +
+            '<div class="row" style="gap:8px; margin-top:8px;">' +
+              '<button class="btn" id="btnThemeDark">Control Room Dark</button>' +
+              '<button class="btn" id="btnThemeSlate">Engineer Slate</button>' +
+              '<button class="btn" id="btnThemeAmber">High-Viz Amber</button>' +
+            '</div>'
+        }) +
+
+        UI.card({
+          span: 'c-6',
+          title: 'Industrial Edge Gateway Link (AGAC DMZ)',
+          icon: 'bolt',
+          body:
+            '<div class="stack" style="gap:10px;">' +
+              '<label class="filter-lbl" for="txtGatewayWs" style="font-size:0.75rem; color:var(--text-dim); font-weight:700;">Secure WebSocket Proxy Endpoint:</label>' +
+              '<input class="input" id="txtGatewayWs" value="wss://special-lamp-pjj9jwp4j4vpc7r55-8088.app.github.dev/scada-feed" style="width:100%; font-family:var(--font-mono); font-size:0.8rem;">' +
+              '<div class="row" style="gap:8px;">' +
+                '<button class="btn btn-primary" id="btnConnectGateway">Connect to Gateway</button>' +
+                '<button class="btn btn-ghost" id="btnPingGateway">Test Health (HTTP)</button>' +
+              '</div>' +
+              '<div id="gatewayFeedback" style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">Status: Standby</div>' +
             '</div>'
         }) +
 
@@ -918,26 +934,86 @@
           span: 'c-6',
           title: 'Storage & Diagnostics',
           body:
-            '<div class="stack" style="gap: 10px;">' +
+            '<div class="stack" style="gap:12px;">' +
               '<p style="color:var(--text-dim); font-size:0.85rem;">IndexedDB status: Healthy. All query models and offline scripts persist client-side.</p>' +
-              '<button class="btn btn-danger" id="btnClearStorage">Reset Local Workspace Data</button>' +
+              '<button class="btn btn-danger" id="btnPurgeStorage">Reset Local Workspace Data</button>' +
             '</div>'
         }) +
       '</div>';
 
-    el.addEventListener('click', function (e) {
-      var t = e.target.dataset.themeSet;
-      if (t) {
-        document.documentElement.setAttribute('data-theme', t);
-        State.set('theme', t);
-        UI.toast('Theme updated: ' + t, 'info');
-      }
-      if (e.target.id === 'btnClearStorage') {
-        DB.clear('queries').then(function () {
-          UI.toast('Local storage cache purged', 'ok');
-        });
-      }
-    });
+    var btnDark = el.querySelector('#btnThemeDark');
+    if (btnDark) btnDark.addEventListener('click', function () { document.documentElement.setAttribute('data-theme', 'control-room'); });
+    var btnSlate = el.querySelector('#btnThemeSlate');
+    if (btnSlate) btnSlate.addEventListener('click', function () { document.documentElement.setAttribute('data-theme', 'slate'); });
+    var btnAmber = el.querySelector('#btnThemeAmber');
+    if (btnAmber) btnAmber.addEventListener('click', function () { document.documentElement.setAttribute('data-theme', 'amber'); });
+
+    var btnConn = el.querySelector('#btnConnectGateway');
+    var txtWs = el.querySelector('#txtGatewayWs');
+    var fb = el.querySelector('#gatewayFeedback');
+
+    if (btnConn && txtWs) {
+      btnConn.addEventListener('click', function () {
+        var ep = txtWs.value.trim();
+        fb.textContent = 'Attempting connection to ' + ep + '...';
+        fb.style.color = 'var(--warn)';
+
+        try {
+          var ws = new WebSocket(ep);
+          ws.onopen = function () {
+            fb.textContent = 'Connected successfully to Edge Gateway!';
+            fb.style.color = 'var(--ok)';
+            var dot = document.querySelector('#gatewayStatusDot') || document.querySelector('.dot.warn');
+            if (dot) dot.className = 'dot';
+            var txt = document.querySelector('#gatewayStatusTxt');
+            if (txt) txt.textContent = 'GATEWAY ONLINE';
+            var pill = document.querySelector('#topbarPillTxt');
+            if (pill) pill.textContent = 'LIVE OT LINK';
+            var pillDot = document.querySelector('#topbarPillDot');
+            if (pillDot) pillDot.className = 'dot';
+            if (window.UI && window.UI.toast) window.UI.toast('Edge Gateway Connected', 'ok');
+          };
+          ws.onerror = function () {
+            fb.textContent = 'WebSocket connection failed. Verify port 8088 is forwarded and set to Public.';
+            fb.style.color = 'var(--bad)';
+          };
+          ws.onclose = function () {
+            fb.textContent = 'Disconnected from Edge Gateway.';
+            fb.style.color = 'var(--text-dim)';
+          };
+        } catch (e) {
+          fb.textContent = 'Connection error: ' + e.message;
+          fb.style.color = 'var(--bad)';
+        }
+      });
+    }
+
+    var btnPing = el.querySelector('#btnPingGateway');
+    if (btnPing) {
+      btnPing.addEventListener('click', function () {
+        fb.textContent = 'Pinging health endpoint...';
+        fetch('https://special-lamp-pjj9jwp4j4vpc7r55-8088.app.github.dev/api/health')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            fb.textContent = 'Health response: ' + d.status + ' (v' + d.version + ')';
+            fb.style.color = 'var(--ok)';
+          })
+          .catch(function (err) {
+            fb.textContent = 'Ping failed: ' + err.message;
+            fb.style.color = 'var(--bad)';
+          });
+      });
+    }
+
+    var btnPurge = el.querySelector('#btnPurgeStorage');
+    if (btnPurge) {
+      btnPurge.addEventListener('click', function () {
+        if (confirm('Clear local database caches?')) {
+          localStorage.clear();
+          location.reload();
+        }
+      });
+    }
   }
 
   /* ---------------------------------------------------------------------
