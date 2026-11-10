@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Update with your real GitHub Pages URL after deployment
+Sitemap: https://githubbest729.github.io/SQL-Optima-Studio/sitemap.xml
