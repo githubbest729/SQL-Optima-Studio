@@ -168,6 +168,39 @@
     { tag: 'PUMP101.RunningStatus', sector: 'Water & Wastewater', desc: 'Lift Pump 101 Run Status', unit: 'state', type: 'Discrete', val: 1, quality: 'Good (192)' }
   ];
 
+  // Live tag ring buffer (holds up to 60 live points per tag for real-time trending)
+  var LIVE_TELEMETRY = {
+    'CH01.SupplyTemperature': [],
+    'CH01.ReturnTemperature': [],
+    'CH01.Load': []
+  };
+
+  function updateTagTelemetry(tagUpdate) {
+    var found = HISTORIAN_TAGS.filter(function (t) { return t.tag === tagUpdate.tag; })[0];
+    if (found) {
+      found.val = tagUpdate.value;
+      found.quality = tagUpdate.quality || 'Good (192)';
+    }
+
+    if (!LIVE_TELEMETRY[tagUpdate.tag]) LIVE_TELEMETRY[tagUpdate.tag] = [];
+    LIVE_TELEMETRY[tagUpdate.tag].push({
+      time: new Date(tagUpdate.sourceTimestamp || tagUpdate.timestamp || Date.now()),
+      val: tagUpdate.value
+    });
+    if (LIVE_TELEMETRY[tagUpdate.tag].length > 60) LIVE_TELEMETRY[tagUpdate.tag].shift();
+
+    var rowVal = document.querySelector('[data-tag-val="' + tagUpdate.tag + '"]');
+    if (rowVal) {
+      rowVal.textContent = tagUpdate.value.toFixed(2);
+      rowVal.classList.add('val-pulse');
+      setTimeout(function () { rowVal.classList.remove('val-pulse'); }, 300);
+    }
+
+    if (window.renderLiveTrend) {
+      window.renderLiveTrend(LIVE_TELEMETRY);
+    }
+  }
+
   /* ---------------------------------------------------------------------
      Script Seeds (Multi-Language)
      --------------------------------------------------------------------- */
@@ -686,7 +719,7 @@
           '<td>' + esc(t.sector) + '</td>' +
           '<td>' + esc(t.unit) + '</td>' +
           '<td><span class="badge">' + esc(t.type) + '</span></td>' +
-          '<td><strong>' + t.val + '</strong></td>' +
+          '<td><strong data-tag-val="' + esc(t.tag) + '">' + Number(t.val).toFixed(2) + '</strong></td>' +
           '<td><span class="badge sev-ok">' + esc(t.quality) + '</span></td>' +
         '</tr>';
       }).join('');
@@ -698,7 +731,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     VIEW 4: Trend Analyzer
+     VIEW 4: Trend Analyzer (Live OPC UA Telemetry)
      --------------------------------------------------------------------- */
   function viewTrends(el) {
     el.innerHTML =
@@ -708,6 +741,7 @@
           '<p>Multi-tag historical trending, variance analysis, and statistical evaluation.</p>' +
         '</div>' +
         '<div class="row">' +
+          '<span class="badge sev-info" id="trendStreamBadge">STREAM: ACTIVE BUFFER</span>' +
           '<button class="btn" id="btnExportTrend">' + I.get('download', 16) + ' Export CSV</button>' +
         '</div>' +
       '</div>' +
@@ -722,42 +756,73 @@
               '<span class="badge" style="color:var(--cyan); border-color:var(--cyan);">CH01.Load</span>' +
             '</div>' +
             '<div class="row">' +
-              '<span class="filter-lbl">Interval: 1m Cyclic</span>' +
+              '<span class="filter-lbl">Interval: 1s Live Stream</span>' +
             '</div>' +
           '</div>' +
-          '<div style="height: 240px; margin: 12px 0;">' +
-            UI.mockMultiTrend() +
+          '<div style="height: 240px; margin: 12px 0;" id="liveTrendMount">' +
+            '<svg id="liveTrendSvg" width="100%" height="240" viewBox="0 0 800 240" preserveAspectRatio="none" style="background: rgba(0,0,0,0.2); border-radius: 6px;"></svg>' +
           '</div>' +
         '</div>' +
 
         UI.card({
           span: 'c-4',
-          title: 'CH01.SupplyTemperature Statistics',
+          title: 'CH01.SupplyTemperature Live Telemetry',
           body:
             '<div class="metric-grid" style="grid-template-columns: repeat(2, 1fr);">' +
-              '<div class="metric"><div class="l">Mean</div><div class="v">5.82 °C</div></div>' +
-              '<div class="metric"><div class="l">Std Deviation</div><div class="v">0.24 °C</div></div>' +
-              '<div class="metric"><div class="l">Min Peak</div><div class="v">5.40 °C</div></div>' +
-              '<div class="metric"><div class="l">Max Peak</div><div class="v">6.35 °C</div></div>' +
+              '<div class="metric"><div class="l">Current Value</div><div class="v" id="liveValSupply">5.80 °C</div></div>' +
+              '<div class="metric"><div class="l">Quality</div><div class="v ok">Good (192)</div></div>' +
+              '<div class="metric"><div class="l">Sample Interval</div><div class="v">1000 ms</div></div>' +
+              '<div class="metric"><div class="l">Transport</div><div class="v">WSS (DMZ)</div></div>' +
             '</div>'
         }) +
 
         UI.card({
           span: 'c-8',
-          title: 'Abnormal Discrepancy & Gap Analysis',
+          title: 'OPC UA Stream Diagnostics',
           body:
             '<div class="stack" style="gap: 8px;">' +
-              '<div class="badge sev-ok">NO TELEMETRY GAPS DETECTED IN ACTIVE BUFFER</div>' +
+              '<div class="badge sev-ok" id="trendBufferPill">SUBSCRIBED: 3 PROCESS CHANNELS</div>' +
               '<p style="color:var(--text-dim); font-size:0.85rem; margin-top:8px;">' +
-                'ΔT (Supply vs Return) averages 5.4 °C across all chillers. Thermodynamic performance is inside target operating limits.' +
+                'Live continuous updates arrive every 1000ms directly from the industrial edge gateway WebSocket pipe.' +
               '</p>' +
             '</div>'
         }) +
       '</div>';
 
+    window.renderLiveTrend = function (telemetry) {
+      var svg = document.querySelector('#liveTrendSvg');
+      var valDisplay = document.querySelector('#liveValSupply');
+      var sup = telemetry['CH01.SupplyTemperature'] || [];
+      if (!svg || sup.length === 0) return;
+
+      var lastPt = sup[sup.length - 1];
+      if (valDisplay && lastPt) valDisplay.textContent = lastPt.val.toFixed(2) + ' °C';
+
+      var pts = sup.map(function (pt, idx) {
+        var x = (idx / Math.max(1, sup.length - 1)) * 800;
+        var clamped = Math.max(4, Math.min(8, pt.val));
+        var y = 240 - ((clamped - 4) / 4) * 220 - 10;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+
+      svg.innerHTML =
+        '<line x1="0" y1="60" x2="800" y2="60" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4"/>' +
+        '<line x1="0" y1="120" x2="800" y2="120" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4"/>' +
+        '<line x1="0" y1="180" x2="800" y2="180" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4"/>' +
+        '<polyline fill="none" stroke="#38bdf8" stroke-width="2.5" points="' + pts + '"/>';
+    };
+
+    window.renderLiveTrend(LIVE_TELEMETRY);
+
     $('#btnExportTrend', el).addEventListener('click', function () {
-      UI.download('historian_trend_chiller.csv', 'Timestamp,CH01.SupplyTemperature,CH01.ReturnTemperature\n2026-11-09T04:00:00Z,5.8,11.2\n2026-11-09T04:01:00Z,5.9,11.3', 'text/csv');
-      UI.toast('Exported CSV dataset', 'ok');
+      var lines = ['Timestamp,Tag,Value'];
+      Object.keys(LIVE_TELEMETRY).forEach(function (tag) {
+        LIVE_TELEMETRY[tag].forEach(function (pt) {
+          lines.push(pt.time.toISOString() + ',' + tag + ',' + pt.val);
+        });
+      });
+      UI.download('live_telemetry_stream.csv', lines.join('\n'), 'text/csv');
+      UI.toast('Exported active buffer CSV', 'ok');
     });
   }
 
@@ -980,11 +1045,29 @@
                 var pillDot = document.querySelector('#topbarPillDot');
                 if (pillDot) pillDot.className = 'dot';
                 if (window.UI && window.UI.toast) window.UI.toast('Edge Gateway Authorized', 'ok');
+
+                // Send subscription packet for target industrial tags
+                ws.send(JSON.stringify({
+                  type: 'SUBSCRIBE_TAGS',
+                  tags: ['CH01.SupplyTemperature', 'CH01.ReturnTemperature', 'CH01.Load'],
+                  intervalMs: 1000
+                }));
+                console.log('[OT_LINK] Subscribed to tags: CH01.SupplyTemperature, CH01.ReturnTemperature, CH01.Load');
+
+              } else if (msg.type === 'OPCUA_TAG_UPDATE') {
+                if (Array.isArray(msg.data)) {
+                  msg.data.forEach(function (point) {
+                    updateTagTelemetry(point);
+                  });
+                }
+
               } else if (msg.type === 'AUTH_ERROR') {
                 fb.textContent = 'Authentication Failed: ' + msg.message;
                 fb.style.color = 'var(--bad)';
               }
-            } catch (e) {}
+            } catch (e) {
+              console.error('Error handling WebSocket message', e);
+            }
           };
 
           ws.onerror = function () {
