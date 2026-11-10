@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "SQL-Optima Studio — SCADA Query Profiler & Tuning Hub",
+  "name": "SQL-Optima Studio — SCADA Query Profiler",
   "short_name": "SQL-Optima",
-  "description": "Offline-first query profiler, performance tuning hub, and automation script workbench for SCADA data acquisition, processing, and reporting.",
+  "description": "Industrial SCADA historian query profiler, tag telemetry analyzer, and script engineering workstation.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "./#/dashboard",
@@ -12,23 +12,16 @@
   "orientation": "any",
   "background_color": "#070b11",
   "theme_color": "#070b11",
-  "categories": ["productivity", "utilities", "developer tools"],
+  "categories": ["utilities", "productivity", "developer tools"],
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ],
   "shortcuts": [
-    {
-      "name": "Query Profiler",
-      "short_name": "Profiler",
-      "description": "Develop and optimize SQL queries",
-      "url": "./#/profiler"
-    },
-    {
-      "name": "Script Workbench",
-      "short_name": "Workbench",
-      "description": "Data acquisition, processing, and reporting scripts",
-      "url": "./#/workbench"
-    }
+    { "name": "Profiler", "url": "./#/profiler" },
+    { "name": "Historian Explorer", "url": "./#/historian" },
+    { "name": "Trend Analyzer", "url": "./#/trends" },
+    { "name": "Alarm Analytics", "url": "./#/alarms" },
+    { "name": "Script Workbench", "url": "./#/workbench" }
   ]
 }

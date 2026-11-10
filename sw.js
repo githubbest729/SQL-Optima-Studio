@@ -1,7 +1,8 @@
-/* SQL-Optima Studio — Service Worker
- * Cache-First offline engine for SCADA Historian Profiler & Script Workbench.
- */
-const CACHE_NAME = 'sql-optima-v2.0';
+/* =====================================================================
+   SQL-Optima Studio — Progressive Web App Service Worker
+   Cache-First Engine with Dynamic Invalidation
+   ===================================================================== */
+const CACHE_NAME = 'sql-optima-v2.4.0';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -12,9 +13,7 @@ const STATIC_ASSETS = [
   'profiler.worker.js',
   'manifest.webmanifest',
   'favicon.svg',
-  'icon.svg',
-  'offline.html',
-  'robots.txt'
+  'icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -40,11 +39,9 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
-      return fetch(event.request).then((networkResponse) => {
-        return networkResponse;
-      }).catch(() => {
+      return fetch(event.request).catch(() => {
         if (event.request.mode === 'navigate') {
-          return caches.match('offline.html');
+          return caches.match('index.html');
         }
       });
     })
