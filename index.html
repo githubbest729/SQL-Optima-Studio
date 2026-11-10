@@ -82,6 +82,11 @@
           </button>
         </div>
 
+        <!-- Help & Guide Button for Non-Technical Users -->
+        <button class="btn btn-ghost" id="topbarHelpBtn" onclick="window.openGuideModal ? window.openGuideModal(location.hash.replace('#/', '')) : null" style="gap:6px; font-size:0.85rem; padding: 6px 12px; margin-left: 8px; border: 1px solid var(--border, #2a3b53); border-radius: 6px;">
+          📖 Help &amp; Guide
+        </button>
+
         <div class="topbar-actions">
           <div class="live-pill" id="livePill" title="Operational Mode Indicator">
             <span class="dot pulse-warn" id="topbarPillDot"></span>
@@ -124,6 +129,7 @@
   <script src="js/st-parser.js"></script>
   <script src="js/python-linter.js"></script>
   <script src="js/report-generator.js"></script>
+  <script src="js/help-guide.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
