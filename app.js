@@ -1223,3 +1223,110 @@
 
   window.addEventListener('DOMContentLoaded', boot);
 })();
+
+// ==========================================
+// QUICK COMMAND PALETTE CONTROLLER (Ctrl+K)
+// ==========================================
+function openCommandPalette() {
+  const existing = document.getElementById('command-palette-modal');
+  if (existing) { existing.remove(); }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'command-palette-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(4,9,18,0.85);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;animation:fadeIn 0.15s ease;';
+
+  const commands = [
+    { label: 'Go to Engineering Dashboard', hash: '#/dashboard', icon: '📊', desc: 'Plant KPI metrics & historian health' },
+    { label: 'Go to SQL Query Profiler', hash: '#/profiler', icon: '⏱️', desc: 'Execution plans, SARGability & cost analysis' },
+    { label: 'Go to Historian Explorer', hash: '#/historian', icon: '🗄️', desc: 'Browse live OPC UA tags and quality details' },
+    { label: 'Go to Trend Analyzer', hash: '#/trends', icon: '📈', desc: 'Live SVG multi-tag telemetry curves' },
+    { label: 'Go to Alarm & Event Analytics', hash: '#/alarms', icon: '🚨', desc: 'EEMUA 191 bad actor and flood detection' },
+    { label: 'Go to Script Workbench', hash: '#/scripts', icon: '🛠️', desc: 'Structured Text (ST) & Python AST linter' },
+    { label: 'Go to System Diagnostics & Settings', hash: '#/settings', icon: '⚙️', desc: 'Edge gateway tokens and theme config' },
+    { label: 'Open Help & Operator Guide', action: () => window.openGuideModal ? window.openGuideModal() : null, icon: '📖', desc: 'Plain-language guide for all plant tabs' },
+    { label: 'Toggle Control Room / Light Theme', action: () => document.getElementById('themeBtn')?.click(), icon: '🌓', desc: 'Switch visual appearance' }
+  ];
+
+  overlay.innerHTML = `
+    <div style="background:#0d1522;border:1px solid #1e293b;box-shadow:0 20px 40px rgba(0,0,0,0.6);border-radius:12px;width:100%;max-width:580px;overflow:hidden;">
+      <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #1e293b;gap:12px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="paletteInput" type="text" placeholder="Type a command, screen name, or action..." style="background:transparent;border:none;outline:none;color:#f8fafc;font-size:1rem;flex:1;font-family:inherit;" autofocus>
+        <kbd style="background:#1e293b;color:#94a3b8;padding:2px 6px;border-radius:4px;font-size:0.75rem;">ESC to close</kbd>
+      </div>
+      <div id="paletteResults" style="max-height:360px;overflow-y:auto;padding:8px;"></div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const input = document.getElementById('paletteInput');
+  const resultsBox = document.getElementById('paletteResults');
+
+  function renderList(filter = '') {
+    const q = filter.toLowerCase().trim();
+    const matched = commands.filter(c => c.label.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
+    if (matched.length === 0) {
+      resultsBox.innerHTML = '<div style="padding:18px;color:#64748b;text-align:center;font-size:0.9rem;">No matching commands found.</div>';
+      return;
+    }
+    resultsBox.innerHTML = matched.map((c, i) => `
+      <div class="palette-item" data-index="${i}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;cursor:pointer;color:#e2e8f0;transition:background 0.1s;">
+        <span style="font-size:1.25rem;">${c.icon}</span>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:0.9rem;color:#f1f5f9;">${c.label}</div>
+          <div style="font-size:0.78rem;color:#94a3b8;">${c.desc}</div>
+        </div>
+        <span style="color:#64748b;font-size:0.8rem;">Jump ↵</span>
+      </div>
+    `).join('');
+
+    resultsBox.querySelectorAll('.palette-item').forEach((el, idx) => {
+      el.addEventListener('mouseenter', () => el.style.background = '#1e293b');
+      el.addEventListener('mouseleave', () => el.style.background = 'transparent');
+      el.addEventListener('click', () => {
+        const item = matched[idx];
+        overlay.remove();
+        if (item.action) {
+          item.action();
+        } else if (item.hash) {
+          location.hash = item.hash;
+        }
+      });
+    });
+  }
+
+  renderList();
+  input.focus();
+  input.addEventListener('input', (e) => renderList(e.target.value));
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  window.addEventListener('keydown', function onEsc(e) {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      window.removeEventListener('keydown', onEsc);
+    }
+  });
+}
+
+// Global Hotkey (Ctrl+K or Cmd+K) & Click Event Bindings
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    openCommandPalette();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const searchBtn = document.getElementById('searchBtn') || document.querySelector('.topbar-search');
+  if (searchBtn) {
+    searchBtn.style.cursor = 'pointer';
+    searchBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openCommandPalette();
+    });
+  }
+});
