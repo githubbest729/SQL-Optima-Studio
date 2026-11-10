@@ -150,7 +150,7 @@ input, select, textarea { font: inherit; }
   overflow-y: auto;
 }
 .nav-sec {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -201,7 +201,7 @@ input, select, textarea { font: inherit; }
   flex-direction: column;
   line-height: 1.1;
 }
-.mode-lbl { font-size: 0.65rem; color: var(--warn); font-weight: 800; letter-spacing: 0.05em; }
+.mode-lbl { font-size: 0.75rem; color: var(--warn); font-weight: 800; letter-spacing: 0.05em; }
 .mode-val { font-size: 0.72rem; color: #fff; }
 
 .sector-chip {
@@ -277,7 +277,7 @@ input, select, textarea { font: inherit; }
 .search-btn kbd {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   background: rgba(255, 255, 255, 0.08);
   padding: 2px 6px;
   border-radius: 4px;
@@ -580,7 +580,7 @@ main {
   gap: 5px;
   padding: 2px 7px;
   border-radius: 4px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   border: 1px solid var(--border);
@@ -734,7 +734,7 @@ main {
 }
 .metric .l { font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--text-dim); }
 .metric .v { font-size: 1.35rem; font-weight: 800; font-family: var(--font-mono); margin: 4px 0 2px; }
-.metric .s { font-size: 0.7rem; color: var(--text-muted); }
+.metric .s { font-size: 0.75rem; color: var(--text-muted); }
 .metric.bad .v { color: var(--bad); }
 .metric.warn .v { color: var(--warn); }
 .metric.ok .v { color: var(--ok); }
